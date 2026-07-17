@@ -5,9 +5,13 @@ app.use(express.json({ limit: '20mb' }));
 app.use(express.static('.'));
 
 // Lazy-load the ESM connector SDK
+let _connectors = null;
 async function getConnectors() {
-  const { ReplitConnectors } = await import('@replit/connectors-sdk');
-  return new ReplitConnectors();
+  if (!_connectors) {
+    const { ReplitConnectors } = await import('@replit/connectors-sdk');
+    _connectors = new ReplitConnectors();
+  }
+  return _connectors;
 }
 
 // ── Fetch CSV from Dropbox ─────────────────────────────────────────────────
@@ -29,33 +33,50 @@ app.get('/api/dropbox-data', async (req, res) => {
     const text = await response.text();
     res.type('text/plain; charset=utf-8').send(text);
   } catch (e) {
-    console.error('[dropbox-data]', e);
+    console.error('[dropbox-data]', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
-// ── Proxy para a API de IA (Anthropic) ───────────────────────────────────
+// ── Proxy para OpenAI (formato compatível com o frontend Anthropic) ────────
+// O frontend envia {model, max_tokens, messages} no formato Anthropic.
+// O backend converte para OpenAI, chama a API e devolve no formato Anthropic.
 app.post('/api/chat', async (req, res) => {
   try {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: 'ANTHROPIC_API_KEY não configurada no servidor' });
+      return res.status(500).json({ error: 'OPENAI_API_KEY não configurada no servidor' });
     }
 
-    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+    const { max_tokens, messages } = req.body;
+
+    // Chamar OpenAI Chat Completions
+    const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
+        'Authorization': `Bearer ${apiKey}`
       },
-      body: JSON.stringify(req.body)
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        max_tokens: max_tokens || 1000,
+        messages  // formato {role, content} é compatível entre os dois
+      })
     });
 
     const data = await upstream.json();
-    res.status(upstream.status).json(data);
+
+    if (!upstream.ok) {
+      return res.status(upstream.status).json(data);
+    }
+
+    // Converter resposta OpenAI → formato Anthropic (que o frontend já sabe parsear)
+    const text = data.choices?.[0]?.message?.content ?? '';
+    res.json({
+      content: [{ type: 'text', text }]
+    });
   } catch (e) {
-    console.error('[chat]', e);
+    console.error('[chat]', e.message);
     res.status(500).json({ error: e.message });
   }
 });
