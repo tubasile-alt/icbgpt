@@ -44,9 +44,9 @@ header{
 .iconbtn:hover{background:#2A2A2C}
 .iconbtn:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .iconbtn svg{width:18px;height:18px}
-.last-update{
-  position:absolute;left:14px;bottom:6px;
-  font-size:9.5px;color:var(--dim);letter-spacing:.01em;
+#chatLastUpdate{
+  text-align:center;font-size:9.5px;color:var(--dim);
+  padding:4px 0 2px;letter-spacing:.01em;
   pointer-events:none;user-select:none;
 }
 .navmenu{
@@ -413,7 +413,6 @@ footer.exfoot{font-size:10.5px;color:var(--dim);text-align:center;margin-top:18p
 <div id="app">
   <header>
     <img class="logoimg" alt="ICB" id="logoTop">
-    <span class="last-update" id="lastUpdate"></span>
     <button class="iconbtn" id="menuBtn" aria-label="Menu" aria-haspopup="true" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
@@ -449,6 +448,7 @@ footer.exfoot{font-size:10.5px;color:var(--dim);text-align:center;margin-top:18p
     </button>
     <div id="msgs"></div>
     <div id="composer">
+      <p id="chatLastUpdate"></p>
       <div class="cwrap">
         <textarea id="input" rows="1" placeholder="Pergunte à sua base de dados" aria-label="Mensagem"></textarea>
         <button id="send" aria-label="Enviar" disabled>
@@ -1750,7 +1750,7 @@ async function delPair(i){
     if (csv && csv.length > 10) {
       CHAT_FULL = csv;
       CHAT_LITE = csv;
-      const el = document.getElementById('lastUpdate');
+      const el = document.getElementById('chatLastUpdate');
       if (el) {
         const now = new Date();
         el.textContent = 'atualizado ' + now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
