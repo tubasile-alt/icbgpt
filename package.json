@@ -4,6 +4,7 @@
   "type": "commonjs",
   "main": "server.js",
   "dependencies": {
+    "@replit/connectors-sdk": "^0.4.1",
     "express": "^4.18.2"
   }
 }
