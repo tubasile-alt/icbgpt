@@ -14,6 +14,24 @@ async function getConnectors() {
   return _connectors;
 }
 
+// ── Listar arquivos do Dropbox (debug) ────────────────────────────────────
+app.get('/api/dropbox-list', async (req, res) => {
+  try {
+    const connectors = await getConnectors();
+    const folder = req.query.path || '';
+    const response = await connectors.proxy('dropbox', '/2/files/list_folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: folder, recursive: false })
+    });
+    const data = await response.json();
+    const names = (data.entries || []).map(e => ({ name: e.name, path: e.path_lower, type: e['.tag'] }));
+    res.json(names);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Fetch CSV from Dropbox ─────────────────────────────────────────────────
 app.get('/api/dropbox-data', async (req, res) => {
   try {
@@ -21,7 +39,7 @@ app.get('/api/dropbox-data', async (req, res) => {
     const response = await connectors.proxy('dropbox', '/2/files/download', {
       method: 'POST',
       headers: {
-        'Dropbox-API-Arg': JSON.stringify({ path: '/claude/gastosdashboard.csv' })
+        'Dropbox-API-Arg': JSON.stringify({ path: '/claude/gastos dashboard.csv' })
       }
     });
 

@@ -1,21 +1,34 @@
 # ICB · Inteligência de Atendimentos
 
 ## Overview
-A single-file HTML dashboard (Portuguese) for ICB service/attendance intelligence. Built with Chart.js, a dark theme, and what appears to be an AI chat interface ("Pergunte à sua base de dados").
+Dashboard interno da ICB Transplante Capilar. Chat com IA que responde perguntas sobre dados de atendimento, gastos, DRE e cirurgias, com dados buscados ao vivo do Dropbox.
 
-## How to run
-The project is served as a static site using Python's built-in HTTP server:
-
+## Como rodar
 ```
-python3 -m http.server 5000
+node server.js
 ```
+Serve na porta 5000. A página principal é `/dashboard-icb.html`.
 
-The main file is `dashboard-icb.html`. The `index.html` at the root redirects there automatically.
+## Arquitetura
+- **Frontend**: `dashboard-icb.html` — HTML/CSS/JS puro com Chart.js
+- **Backend**: `server.js` — Express (Node.js) com dois endpoints:
+  - `GET /api/dropbox-data` — baixa `/claude/gastos dashboard.csv` do Dropbox via conector Replit
+  - `POST /api/chat` — proxeia chamadas para OpenAI GPT-4o usando `OPENAI_API_KEY`
+
+## Fontes de dados
+- **Dropbox**: `/claude/gastos dashboard.csv` — despesas brutas lançamento a lançamento
+- **Embutido no HTML**: dados de atendimento, DRE e cirurgias por unidade (fallback se Dropbox falhar)
+
+## Secrets necessários
+- `OPENAI_API_KEY` — chave da API OpenAI para o chat funcionar
+
+## Integrações
+- **Dropbox** (`conn_dropbox_01KCA2YZGSET4TDCRBV6FXPYTP`) — via `@replit/connectors-sdk`
 
 ## Stack
-- Pure HTML/CSS/JavaScript (no build step)
-- Chart.js 4.4.1 (via CDN)
-- Figtree font (via Google Fonts)
-- No backend
+- Node.js 24 + Express 4
+- `@replit/connectors-sdk` para Dropbox
+- Chart.js 4.4.1 (CDN), Figtree font (Google Fonts)
+- Sem banco de dados, sem build step
 
-## User preferences
+## Preferências do usuário
