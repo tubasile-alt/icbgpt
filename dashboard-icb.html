@@ -1744,7 +1744,7 @@ async function delPair(i){
 /* ── Carrega dados do Dropbox ao iniciar ─────────────────────────────── */
 (async function initDropboxData(){
   try {
-    const res = await fetch('/api/dropbox-data');
+    const res = await fetch('/api/dropbox-summary');
     if (!res.ok) { console.warn('[Dropbox] HTTP', res.status); return; }
     const csv = await res.text();
     if (csv && csv.length > 10) {
