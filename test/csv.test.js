@@ -5,6 +5,7 @@ const test = require('node:test');
 const {
   detectDelimiter,
   findColumn,
+  inferMoneyDecimalSeparator,
   normalizeText,
   parseDate,
   parseDelimited,
@@ -47,6 +48,30 @@ test('converte valores brasileiros e internacionais sem perder centavos', () => 
   assert.equal(parseMoney('1.234'), 1234);
   assert.equal(parseMoney('-25,40'), -25.4);
   assert.equal(parseMoney('sem valor'), null);
+  assert.equal(parseMoney('368.409', '.'), 368.409);
+  assert.equal(parseMoney('1.234,56', ','), 1234.56);
+});
+
+test('infere o separador decimal do arquivo antes de interpretar três casas', () => {
+  const dotRows = [['1906.58'], ['368.409'], ['200.534']];
+  const commaRows = [['1.906,58'], ['368,409'], ['200,534']];
+
+  assert.equal(inferMoneyDecimalSeparator(dotRows, 0), '.');
+  assert.equal(inferMoneyDecimalSeparator(commaRows, 0), ',');
+});
+
+test('não transforma valores decimais reais de Porto Alegre em centenas de milhares', () => {
+  const parsed = parseGastosCsv([
+    'DATA;VALOR;TIPO DE GASTO;UNIDADE',
+    '01/03/2026;100.25;MATERIAL;POA',
+    '04/03/2026;368.409;ADVOGADO;POA',
+    '14/04/2026;200.534;MEDICINA DO TRABALHO;POA'
+  ].join('\n'), { now: new Date('2026-08-28T12:00:00Z'), knownUnits: ['Porto Alegre'] });
+
+  assert.equal(parsed.meta.moneyDecimalSeparator, '.');
+  assert.equal(parsed.entries[1].valor, 368.409);
+  assert.equal(parsed.entries[2].valor, 200.534);
+  assert.ok(Math.abs(parsed.entries.reduce((sum, row) => sum + row.valor, 0) - 669.193) < 1e-9);
 });
 
 test('valida datas ISO, brasileiras e mensais', () => {

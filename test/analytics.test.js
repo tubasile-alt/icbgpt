@@ -220,6 +220,44 @@ test('entrega visão completa do CEO com os cinco indicadores gerenciais', () =>
   assert.match(result.context, /não somar novamente os gastos do Dropbox/);
 });
 
+test('reconhece a formulação como se fosse um CEO', () => {
+  const plan = buildQueryPlan('Me dê um panorama como se fosse um CEO sobre Porto Alegre no ano de 2026', {
+    latestAttendance: '2026-06',
+    latestExpenses: '2026-08',
+    latestFinancials: '2026-06',
+    knownUnits: ['Porto Alegre'],
+    now
+  });
+
+  assert.equal(plan.executiveKpis, true);
+  assert.equal(plan.includeAttendance, true);
+  assert.equal(plan.includeExpenses, true);
+  assert.equal(plan.includeFinancials, true);
+  assert.deepEqual(plan.units, ['Porto Alegre']);
+  assert.equal(plan.periods.length, 12);
+});
+
+test('reconhece variações de linguagem executiva e a palavra CEO isolada', () => {
+  const phrases = [
+    'CEO Porto Alegre 2026',
+    'Analise os números para a diretoria',
+    'Quero uma visão executiva da unidade',
+    'Apresente um panorama executivo',
+    'Mostre com olhar executivo',
+    'Prepare um resumo executivo',
+    'Quero indicadores executivos',
+    'Analise como a diretoria'
+  ];
+
+  for (const question of phrases) {
+    const plan = buildQueryPlan(question, {
+      latestAttendance: '2026-06', latestExpenses: '2026-08', latestFinancials: '2026-06', now
+    });
+    assert.equal(plan.executiveKpis, true, question);
+    assert.equal(plan.includeFinancials, true, question);
+  }
+});
+
 test('visão do CEO sem período usa o último mês completo comum às bases', () => {
   const plan = buildQueryPlan('Visão do CEO de RP', {
     latestAttendance: '2026-05',
