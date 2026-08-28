@@ -192,3 +192,49 @@ test('tolera erros de digitação em médico, cirurgia e Porto Alegre', () => {
   assert.equal(result.professionalBreakdown[0].conversaoConsultaCirurgiaPct, 40);
   assert.match(result.context, /conversao_consulta_cirurgia_pct/);
 });
+
+test('entrega visão completa do CEO com os cinco indicadores gerenciais', () => {
+  const result = makeEngine().query({
+    question: 'Me dê uma visão do CEO para RP em abril de 2026'
+  });
+
+  assert.equal(result.plan.executiveKpis, true);
+  assert.equal(result.plan.includeAttendance, true);
+  assert.equal(result.plan.includeExpenses, true);
+  assert.equal(result.plan.includeFinancials, true);
+  assert.equal(result.plan.expenseDimension, 'category');
+  assert.deepEqual(result.plan.periods, ['2026-04']);
+  assert.deepEqual(result.plan.units, ['Ribeirão Preto']);
+  assert.equal(result.executiveSummary.leadsRecebidos, 10);
+  assert.equal(result.executiveSummary.cirurgiasRealizadas, 1);
+  assert.equal(result.executiveSummary.investimentoMarketing, 1234.56);
+  assert.ok(Math.abs(result.executiveSummary.custoPorLead - 123.456) < 1e-9);
+  assert.equal(result.executiveSummary.conversaoLeadCirurgiaPct, 10);
+  assert.equal(result.executiveSummary.receitaLiquidaDre, 9500);
+  assert.equal(result.executiveSummary.ticketMedioLiquidoPorTransplante, 9500);
+  assert.equal(result.executiveSummary.custoTotalDre, 6000);
+  assert.equal(result.executiveSummary.gastosCaixaDropbox, 1234.56);
+  assert.equal(result.executiveSummary.cacAproximadoPorCirurgia, 1234.56);
+  assert.match(result.context, /## VISÃO DO CEO/);
+  assert.match(result.context, /Custo total da unidade \(DRE\)_R\$\|6000/);
+  assert.match(result.context, /não somar novamente os gastos do Dropbox/);
+});
+
+test('visão do CEO sem período usa o último mês completo comum às bases', () => {
+  const plan = buildQueryPlan('Visão do CEO de RP', {
+    latestAttendance: '2026-05',
+    latestExpenses: '2026-04',
+    knownUnits: ['Ribeirão Preto'],
+    now
+  });
+
+  assert.deepEqual(plan.periods, ['2026-04']);
+  assert.equal(plan.includeFinancials, true);
+
+  const pastedQuestions = buildQueryPlan(
+    'Leads recebidos no mês, CAC e marketing, conversão em cirurgia, ticket médio líquido e custo total da unidade',
+    { latestAttendance: '2026-05', latestExpenses: '2026-04', latestFinancials: '2026-04', now }
+  );
+  assert.equal(pastedQuestions.executiveKpis, true);
+  assert.deepEqual(pastedQuestions.periods, ['2026-04']);
+});
