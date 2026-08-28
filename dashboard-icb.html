@@ -974,16 +974,16 @@ function mkChartG(id,type,data,opts={}){
 }
 
 /* ================= CHAT ================= */
-const PRIMER = `Você é o assistente de dados da ICB Transplante Capilar, embutido em um dashboard interno. Hoje é 12/07/2026.
+const PRIMER = `Você é o assistente de dados da ICB Transplante Capilar, embutido em um dashboard interno.
 
-REGRA ABSOLUTA: responda EXCLUSIVAMENTE com base nos dados fornecidos abaixo. Não use nenhum conhecimento externo. Se a informação não estiver nos dados, diga claramente: "isso não consta nos dados". As fontes são DUAS: (1) a planilha "Controle de Atendimentos icb.xlsx" — atendimento, DRE e cirurgias; (2) a base "Gastos" (CSV) — despesas lançamento-a-lançamento de set/2017 a jul/2026.
+REGRA ABSOLUTA: responda EXCLUSIVAMENTE com base nos dados fornecidos abaixo. Não use nenhum conhecimento externo. Se a informação não estiver nos dados, diga claramente: "isso não consta nos dados". As fontes são DUAS e independentes: (1) "Controle de Atendimentos icb" — atendimento, faturamento e cirurgias; (2) "Gastos" — histórico congelado até 2025 combinado com o CSV diário do Dropbox desde 2026.
 
 Diretrizes:
 - Responda em português do Brasil, direto e conciso. Formate valores como R$ com separador de milhar brasileiro.
 - Sempre que fizer contas (somas, médias, taxas, variações), mostre o resultado e cite de qual seção/fonte veio (ex.: "DRE mensal 2026", "Base de Gastos — por categoria").
 - Separe FATO (está nos dados) de INFERÊNCIA (cálculo ou projeção sua) e sinalize incertezas. Registros marcados com * têm posição de coluna inferida.
-- Ao cruzar fontes, deixe o período claro. Receita vem do DRE (contábil); gasto vem da base de lançamentos (caixa) — são fontes independentes, não chame a diferença de "lucro".
-- 2026-07 é mês corrente e PARCIAL (nas duas fontes); último mês completo 2026-06. NF de jun/26 ainda não lançada.
+- Ao cruzar fontes, deixe o período claro. Faturamento vem do Controle de Atendimentos; gasto vem da base de lançamentos (caixa) — são fontes independentes, não chame a diferença de "lucro".
+- Respeite as datas de disponibilidade e os avisos de mês parcial informados no recorte. NA significa dado indisponível, não zero.
 - Use tabelas markdown quando comparar várias unidades/meses. Máximo ~8 linhas por tabela, ofereça continuar se houver mais.
 - Nunca invente unidades, médicos, categorias ou números que não estejam nos dados.
 - Quando a pergunta for específica de uma unidade/mês, pode vir uma seção "DADOS DETALHADOS RELEVANTES" com o nível granular (gasto por tipo, atendimento por profissional). Use-a como fonte principal e cite-a. Se ela não vier e a pergunta exigir esse nível, diga que o recorte não foi carregado e sugira reformular citando a unidade e o período.
@@ -996,7 +996,7 @@ let CHAT_FULL = "# BASE ICB — hoje 12/07/2026. Último mês completo 2026-06. 
 let CHAT_LITE = "# BASE ICB — hoje 12/07/2026. Último mês completo 2026-06. 2026-07 PARCIAL. Códigos de unidade abaixo.\nLEGENDA: U01=(sem unidade); U02=ABC; U03=Anália Franco; U04=Barra-RJ; U05=Belo Horizonte; U06=Brasília; U07=Campinas; U08=Campo Grande; U09=Cuiabá; U10=Curitiba; U11=Florianópolis; U12=Fortaleza; U13=Goiânia; U14=Guarulhos; U15=Itaim Bibi; U16=Joinville; U17=João Pessoa; U18=Jundiaí; U19=Londrina; U20=Manaus; U21=Matriz; U22=Matriz (ref todas unidades); U23=Piracicaba; U24=Porto Alegre; U25=Recife; U26=Ribeirão Preto; U27=Rio de Janeiro; U28=Salvador; U29=Santos; U30=Sorocaba; U31=São José dos Campos; U32=São Luis; U33=São Luís; U34=Uberlândia; U35=Vitória\n## ATENDIMENTO ANUAL POR UNIDADE (ano|unid|leads|faturamentoR$|cirurgias|consultas|retornos) — planilha Controle Atendimentos\n2021|U02|3730|2561970|184|716|596\n2021|U03|4989|3412944|191|714|483\n2021|U05|8019|5117736|368|1056|1077\n2021|U06|5148|3851790|273|945|512\n2021|U07|6233|5053150|393|990|920\n2021|U10|4689|2804300|210|524|372\n2021|U12|965|213700|15|122|21\n2021|U13|3944|3152700|187|658|443\n2021|U14|4738|2337400|173|847|386\n2021|U15|7470|6308025|435|1196|1015\n2021|U24|1651|608900|48|215|43\n2021|U25|2495|809970|58|277|88\n2021|U26|5045|4404850|303|582|436\n2021|U27|1414|269750|19|144|13\n2021|U28|3563|858750|64|240|97\n2021|U30|3249|1895550|145|425|358\n2021|U31|3292|2563565|193|605|407\n2021|U34|155|81950|6|25|5\n2022|U02|4569|2113598|153|588|548\n2022|U03|7124|2753150|205|723|552\n2022|U05|8069|5027900|355|1122|994\n2022|U06|4662|4528250|316|790|1025\n2022|U07|6102|5420637|394|1064|857\n2022|U08|948|226700|17|108|16\n2022|U10|4936|2439540|173|554|506\n2022|U11|2735|1089600|82|274|131\n2022|U12|5436|1223800|89|502|342\n2022|U13|5176|3862050|288|847|473\n2022|U14|4604|1853600|146|550|403\n2022|U15|8773|6120700|423|1179|975\n2022|U16|1854|155950|12|110|14\n2022|U18|2134|582150|42|119|28\n2022|U24|6438|2369045|175|739|444\n2022|U25|5151|2139730|152|570|368\n2022|U26|4747|4502300|255|573|475\n2022|U27|8373|1691790|132|658|149\n2022|U28|6257|1658255|124|521|319\n2022|U30|3971|1824750|138|433|390\n2022|U31|4370|2236450|169|580|431\n2022|U34|3434|1891250|148|362|147\n2023|U02|3861|2301165|170|429|399\n2023|U03|6164|2363100|180|561|474\n2023|U04|1953|524370|42|216|39\n2023|U05|7039|5299921|381|1149|778\n2023|U06|4628|4634700|337|914|1047\n2023|U07|6570|7401780|531|1101|1188\n2023|U08|2834|1399504|105|366|295\n2023|U09|693|14450|1|34|1\n2023|U10|4691|2326900|166|641|395\n2023|U11|4298|2031600|155|346|500\n2023|U12|5064|1290550|96|422|525\n2023|U13|4800|3060950|229|669|609\n2023|U14|4948|1506950|118|457|305\n2023|U15|7399|4731795|344|851|958\n2023|U16|3251|667300|52|241|121\n2023|U17|5128|265970|21|187|47\n2023|U18|4710|1040850|81|236|199\n2023|U19|2011|245200|18|95|20\n2023|U20|2398|676500|49|244|99\n2023|U23|263|0|0|4|0\n2023|U24|6124|2903250|218|740|535\n2023|U25|4615|1862450|129|464|364\n2023|U26|5427|5055850|322|618|593\n2023|U27|4527|1861390|147|545|265\n2023|U28|7429|1465890|116|453|313\n2023|U29|2384|741500|53|244|95\n2023|U30|3898|1934625|149|367|443\n2023|U31|3921|2125550|159|497|390\n2023|U33|904|270200|22|122|34\n2023|U34|3227|3628216|278|436|344\n2023|U35|2307|696900|52|176|91\n2024|U02|3718|1421500|109|300|232\n2024|U03|6557|1634450|121|406|289\n2024|U04|2500|682437|54|250|86\n2024|U05|8298|4762850|346|1011|895\n2024|U06|5805|3764227|273|915|1006\n2024|U07|5379|6118839|426|825|1244\n2024|U08|3262|1551250|117|329|395\n2024|U09|2728|508850|38|205|83\n2024|U10|5413|1355645|96|488|353\n2024|U11|3990|1219100|94|289|357\n2024|U12|5229|768400|59|250|393\n2024|U13|5539|3020300|227|661|681\n2024|U14|4488|973150|78|316|254\n2024|U15|6676|3612380|269|772|701\n2024|U16|2539|694300|56|193|155\n2024|U17|1869|139470|11|69|41\n2024|U18|3914|1329000|101|195|233\n2024|U19|2046|400540|29|189|55\n2024|U20|1753|884499|68|151|173\n2024|U23|3358|749550|58|240|135\n2024|U24|5972|2302990|170|702|445\n2024|U25|5366|1382550|98|403|356\n2024|U26|4789|4974100|295|605|559\n2024|U27|2514|1691360|138|458|182\n2024|U28|5516|1605220|130|350|268\n2024|U29|3123|1862600|125|336|260\n2024|U30|3146|1910850|147|312|632\n2024|U31|3287|1260700|93|465|240\n2024|U33|1665|486000|39|150|128\n2024|U34|2501|2367701|188|348|276\n2024|U35|2852|671400|49|170|176\n2025|U02|2894|1651610|121|299|299\n2025|U03|3094|1614310|117|267|159\n2025|U04|601|222900|17|52|51\n2025|U05|4887|3909313|280|973|675\n2025|U06|3940|3510184|255|840|793\n2025|U07|3679|4159463|276|630|811\n2025|U08|1873|1504378|110|309|386\n2025|U09|25|63000|5|8|18\n2025|U10|3846|1405480|99|444|235\n2025|U11|2886|1236646|88|196|299\n2025|U12|2114|688148|50|188|336\n2025|U13|3484|3010600|218|647|637\n2025|U14|2403|1421787|103|338|237\n2025|U15|4724|3701802|260|677|447\n2025|U18|2042|1303464|91|207|243\n2025|U20|2023|372000|28|118|186\n2025|U23|1998|966282|71|230|250\n2025|U24|3710|2305120|170|545|415\n2025|U25|3473|1733942|122|419|343\n2025|U26|4294|5134400|313|545|723\n2025|U27|3702|1594429|119|282|200\n2025|U28|3208|1523876|117|465|300\n2025|U29|2802|2038650|138|349|298\n2025|U30|1753|1496950|110|276|541\n2025|U31|2185|2110190|146|515|358\n2025|U34|1956|2076900|160|341|269\n2026|U02|2030|1191616|77|169|195\n2026|U03|1885|863278|61|173|114\n2026|U05|3061|1991859|127|452|404\n2026|U06|2105|1765013|120|394|368\n2026|U07|2082|1808715|120|340|348\n2026|U08|1015|864713|57|172|180\n2026|U10|1826|973346|63|208|107\n2026|U11|1519|352840|25|150|152\n2026|U12|209|98428|7|12|29\n2026|U13|2102|1403770|95|285|316\n2026|U14|1668|792732|53|153|129\n2026|U15|2422|1930094|129|282|230\n2026|U18|1095|675920|43|108|111\n2026|U23|860|553210|38|103|58\n2026|U24|1931|1500442|101|356|246\n2026|U25|1723|1199385|75|255|191\n2026|U26|1812|2105500|126|256|280\n2026|U27|1782|892500|63|190|105\n2026|U28|1682|1008412|75|207|192\n2026|U29|1495|828372|55|156|122\n2026|U30|979|913793|63|147|161\n2026|U31|1171|976535|64|246|231\n2026|U34|912|956960|67|147|89\n## DRE MENSAL 2026 (mes|unid|receitaBruta|EBITDA|lucroLiq|margemEBITDA%) R$\n2026-01|U02|224964|121482|111253|54\n2026-01|U03|135600|56048|45579|41\n2026-01|U05|344039|140320|118372|41\n2026-01|U06|392652|181077|157820|46\n2026-01|U07|328720|93385|73335|28\n2026-01|U08|161484|35528|25884|22\n2026-01|U10|183106|34559|25884|19\n2026-01|U11|30400|-33573|-46279|-110\n2026-01|U12|98428|8452|5626|9\n2026-01|U13|291100|100603|81258|35\n2026-01|U14|177750|84156|72752|47\n2026-01|U15|309610|55523|37238|18\n2026-01|U18|103550|39467|30474|38\n2026-01|U20|0|-5180|-5588|0\n2026-01|U23|79950|26389|20382|33\n2026-01|U24|229650|67493|54772|29\n2026-01|U25|218228|65250|57311|30\n2026-01|U26|392300|139073|105644|35\n2026-01|U27|125500|-18790|-26328|-15\n2026-01|U28|216530|36118|26515|17\n2026-01|U29|123982|27912|13045|23\n2026-01|U31|152000|31295|20236|21\n2026-01|U30|130450|53040|40839|41\n2026-01|U34|222180|74623|58542|34\n2026-02|U02|228210|124842|124842|55\n2026-02|U03|209420|116142|116142|55\n2026-02|U05|326850|83180|83180|25\n2026-02|U06|272510|51947|51947|19\n2026-02|U07|305028|77935|77935|26\n2026-02|U08|119720|7406|7406|6\n2026-02|U10|174070|30155|30155|17\n2026-02|U11|67610|-9163|-9163|-14\n2026-02|U12|0|-60346|-60346|0\n2026-02|U13|205000|22519|22519|11\n2026-02|U14|147182|70063|70063|48\n2026-02|U15|359760|63571|63571|18\n2026-02|U18|71700|14207|14207|20\n2026-02|U20|0|-5000|-5000|0\n2026-02|U23|92350|35081|35081|38\n2026-02|U24|167512|24578|24578|15\n2026-02|U25|156622|10916|10916|7\n2026-02|U26|320500|104491|104491|33\n2026-02|U27|161000|26212|26212|16\n2026-02|U28|146552|-5912|-5912|-4\n2026-02|U29|146200|34862|34862|24\n2026-02|U31|146716|31243|31243|21\n2026-02|U30|170500|86520|86520|51\n2026-02|U34|193800|48398|48398|25\n2026-03|U02|126264|43581|43581|35\n2026-03|U03|162166|72311|72311|45\n2026-03|U05|414860|158433|154627|38\n2026-03|U06|298142|142748|142748|48\n2026-03|U07|232484|38848|38848|17\n2026-03|U08|149070|31711|31711|21\n2026-03|U10|182490|9214|9214|5\n2026-03|U11|14500|-49052|-49052|-338\n2026-03|U12|0|-63188|-63188|0\n2026-03|U13|198980|29738|29738|15\n2026-03|U14|122250|47673|47673|39\n2026-03|U15|469584|92282|92282|20\n2026-03|U18|143010|60779|60779|42\n2026-03|U20|0|-5000|-5000|0\n2026-03|U23|83700|21214|21214|25\n2026-03|U24|245410|74864|74864|31\n2026-03|U25|194010|60851|60851|31\n2026-03|U26|426900|202281|202281|47\n2026-03|U27|129400|-26483|-26483|-20\n2026-03|U28|203950|38450|38450|19\n2026-03|U29|106610|14341|14341|13\n2026-03|U31|255590|97584|97584|38\n2026-03|U30|171643|81558|81558|48\n2026-03|U34|95700|-7014|-7014|-7\n2026-04|U02|215464|118656|104594|55\n2026-04|U03|130100|38918|26302|30\n2026-04|U05|382010|143104|117480|37\n2026-04|U06|292460|39185|9085|13\n2026-04|U07|332880|123003|106987|37\n2026-04|U08|132730|20622|10563|16\n2026-04|U10|184400|39724|29620|22\n2026-04|U11|55950|-24144|-27255|-43\n2026-04|U13|312740|125287|107968|40\n2026-04|U14|90950|25254|12761|28\n2026-04|U15|309556|33479|9254|11\n2026-04|U18|116600|41344|34659|35\n2026-04|U23|137110|65347|60270|48\n2026-04|U24|248830|69702|57738|28\n2026-04|U25|213676|61847|53368|29\n2026-04|U26|383500|143442|108513|37\n2026-04|U27|183600|24837|17035|14\n2026-04|U28|160950|3079|-10475|2\n2026-04|U29|166070|46648|37419|28\n2026-04|U31|143229|27784|17852|19\n2026-04|U30|130500|59829|54003|46\n2026-04|U34|159280|38125|25561|24\n2026-04|U12|0|-6298|-8536|0\n2026-04|U20|0|-5150|-5150|0\n2026-05|U02|222050|96824|96824|44\n2026-05|U03|98482|23257|23257|24\n2026-05|U05|216740|4036|4036|2\n2026-05|U06|282249|84472|84472|30\n2026-05|U07|308745|99942|99942|32\n2026-05|U08|160599|33487|33487|21\n2026-05|U10|145560|-13036|-13036|-9\n2026-05|U11|83610|-18319|-18319|-22\n2026-05|U12|0|1091|1091|0\n2026-05|U13|246730|46029|46029|19\n2026-05|U14|139350|57499|57499|41\n2026-05|U15|260974|6086|6086|2\n2026-05|U18|129710|47449|47449|37\n2026-05|U20|0|-5000|-5000|0\n2026-05|U23|67400|2150|2150|3\n2026-05|U24|349030|112716|112716|32\n2026-05|U25|174119|45651|45651|26\n2026-05|U26|313900|63108|63108|20\n2026-05|U27|147600|1974|1974|1\n2026-05|U28|146460|-5388|-5388|-4\n2026-05|U29|141720|19827|19827|14\n2026-05|U31|128981|11692|11692|9\n2026-05|U30|125000|38438|38438|31\n2026-05|U34|163000|34600|34600|21\n2026-06|U02|174664|80700|80700|46\n2026-06|U03|127510|49756|48380|39\n2026-06|U05|307360|100030|98653|33\n2026-06|U06|227000|25198|23822|11\n2026-06|U07|300858|75870|74494|25\n2026-06|U08|141110|26773|25397|19\n2026-06|U10|103720|-8273|-9650|-8\n2026-06|U11|100770|-4432|-4432|-4\n2026-06|U12|0|-129|-129|0\n2026-06|U13|149220|-14031|-14031|-9\n2026-06|U14|115250|39731|39731|34\n2026-06|U15|220610|-74250|-75626|-34\n2026-06|U18|111350|33894|33894|30\n2026-06|U20|0|-5000|-5000|0\n2026-06|U23|92700|25441|25441|27\n2026-06|U24|260010|48950|47574|19\n2026-06|U25|242730|59354|57977|24\n2026-06|U26|268400|88588|87211|33\n2026-06|U27|145400|-23649|-25026|-16\n2026-06|U28|133970|-3198|-3198|-2\n2026-06|U31|150019|28916|27540|19\n2026-06|U30|185700|84022|82646|45\n2026-06|U34|123000|15939|15939|13\n2026-06|U29|143790|27101|27101|19\n## DRE 2025 ANUAL (unid|faturamento|despesas|lucroLiq) R$\nU02|1651610|1064517|587093\nU03|1614310|1043147|571163\nU05|3909313|3501232|408080\nU06|3510184|2512300|997884\nU07|4159463|2908046|1251418\nU08|1504378|1424702|79676\nU09|63000|122298|-59298\nU10|1405480|1498219|-92740\nU11|1236646|1266053|-29407\nU12|688148|972284|-284136\nU13|3010600|2226171|784429\nU14|1421787|848261|573526\nU15|3701802|2884786|817016\nU16|0|4023|-4023\nU18|1303464|854991|448473\nU20|372000|664483|-292483\nU23|966282|727043|239239\nU24|2305120|1824530|480590\nU25|1733942|1490621|243322\nU26|5134400|3025898|2108502\nU27|1817329|2063030|-245701\nU28|1523876|1601763|-77887\nU29|2038650|1601847|436803\nU31|2110190|1506230|603960\nU30|1496950|962306|534644\nU34|2076900|1621743|455157\nU22|0|1181516|-1181516\nU32|18979|37958|-18979\nU35|0|-2442|2442\n## NOTAS FISCAIS (mes|vendas|NF|%) R$\n2025-01|5327990|3558260|67%\n2026-01|4672173|3295044|71%\n2025-02|4380090|3088730|71%\n2026-02|4188812|2887443|69%\n2025-03|4176190|2779560|67%\n2026-03|4426713|3274171|74%\n2025-04|4096060|2913055|71%\n2026-04|4482585|3303023|74%\n2025-05|3756703|2724010|73%\n2026-05|4052009|2484591|61%\n2025-06|3436274|2446032|71%\n2026-06|3825141|NA|0%\n2025-07|4782688|3373154|71%\n2025-08|4502634|2923416|65%\n2025-09|4020626|2810746|70%\n2025-10|4212964|2980945|71%\n2025-11|3968543|2851289|72%\n2025-12|4095062|4388856|107%\n## GASTOS TOTAIS POR ANO (ano|R$|n)\n2017|74939|103\n2018|1372383|718\n2019|4676154|1907\n2020|12399592|3956\n2021|29527543|7744\n2022|36214282|12409\n2023|46652599|16956\n2024|44187552|19381\n2025|41455952|18234\n2026|20637638|10408\n## GASTOS POR CATEGORIA total (cat|R$|n)\nSALÁRIO|97475353|21530\nIMPOSTO|42864721|12869\nCIRURGIA|37490757|8688\nCUSTO OPERACIONAL|32725185|32415\nMARKETING|21780655|9092\nLOCOMOÇÃO|4302309|6746\nOUTROS|559652|476\n## GASTOS POR UNIDADE total (unid|R$)\nU07|18611950\nU15|18527132\nU05|16540608\nU21|14844374\nU06|12760409\nU13|11788199\nU26|11670233\nU10|9604271\nU24|9312541\nU31|9189439\nU03|8299867\nU30|8225110\nU02|7965083\nU27|7677753\nU25|7662188\nU28|7512614\nU34|6555058\nU14|6502509\nU11|5462053\nU12|5405162\nU08|5394756\nU29|4681036\nU18|3995572\nU23|3204224\nU20|2799863\nU16|2644977\nU35|2014437\nU04|1880423\nU09|1845450\nU33|1827329\nU19|1525469\nU17|1267471\nU01|1073\n## GASTOS FIXO/VARIAVEL (tipo|R$)\nFIXO|131397803\nVARIÁVEL|105800829\n## GASTO MENSAL 2026 jan-jun todas unidades (mes|R$) — cruze com receita DRE\n2026-01|3542938\n2026-02|3205943\n2026-03|3256489\n2026-04|3508169\n2026-05|3300409\n2026-06|3154104\n## NOTAS: 2026-07 parcial. Gastos ago-dez/26 (agendamentos) excluídos. Receita=DRE(contábil), gasto=caixa: fontes distintas. * = coluna inferida.";
 
 async function callAPI(messages){
-  const body=JSON.stringify({model:'gpt-4o',max_tokens:1000,messages});
+  const body=JSON.stringify({max_tokens:700,messages});
   const res=await fetch('/api/chat',{
     method:'POST',headers:{'Content-Type':'application/json'},body
   });
@@ -1015,7 +1015,10 @@ async function callAPI(messages){
 
 /* Estratégias, da mais rica à mais simples. A que funcionar vira padrão da sessão. */
 function flatHist(hist){
-  return hist.slice(0,-1).map(m=>(m.role==='user'?'USUÁRIO: ':'ASSISTENTE: ')+m.content).join('\n');
+  return hist.slice(0,-1).slice(-6).map(m=>{
+    const content=String(m.content||'').slice(0,1600);
+    return (m.role==='user'?'USUÁRIO: ':'ASSISTENTE: ')+content;
+  }).join('\n');
 }
 /* ============ DRILL-DOWN SOB DEMANDA ============
    Índices detalhados ficam no arquivo; a cada pergunta injetamos só a fatia relevante. */
@@ -1100,6 +1103,18 @@ function contextoDinamico(pergunta){
        + 'Estes registros vêm da base completa e são o nível mais granular disponível. Use-os preferencialmente às tabelas consolidadas acima quando a pergunta for específica.\n'
        + partes.join('\n\n');
 }
+async function contextoIntegrado(pergunta){
+  const res=await fetch('/api/analise-integrada',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({question:pergunta})
+  });
+  let data={};
+  try{ data=await res.json(); }catch(e){ throw new Error('resposta analítica ilegível'); }
+  if(!res.ok) throw new Error(data.error||('HTTP '+res.status));
+  if(!data.context) throw new Error('recorte analítico vazio');
+  return {context:data.context,meta:data.meta||{},source:data.source||{}};
+}
 async function callLegacy(prompt){
   if(!(window.claude&&typeof window.claude.complete==='function')) throw new Error('window.claude.complete indisponível neste visualizador');
   const r=await window.claude.complete(prompt);
@@ -1110,63 +1125,79 @@ async function callLegacy(prompt){
 function singlePrompt(dados,h){
   return PRIMER+dados+'\n\nHISTÓRICO DA CONVERSA ATÉ AQUI:\n'+(flatHist(h)||'(início da conversa)')+'\n\nPERGUNTA ATUAL DO USUÁRIO: '+h[h.length-1].content+'\n\nResponda apenas a pergunta atual.';
 }
-const STRATS=[
-  {id:'full-multi', note:null, build:h=>[{role:'user',content:PRIMER+CHAT_FULL+contextoDinamico(h[h.length-1].content)},{role:'assistant',content:'Entendido. Responderei exclusivamente com base nesses dados.'},...h]},
-  {id:'lite-multi', note:'Resposta com base resumida (visão anual/consolidada).', build:h=>[{role:'user',content:PRIMER+CHAT_LITE+contextoDinamico(h[h.length-1].content)},{role:'assistant',content:'Entendido. Responderei exclusivamente com base nesses dados.'},...h]},
-  {id:'lite-single', note:'Resposta com base resumida (visão anual/consolidada).', build:h=>[{role:'user',content:singlePrompt(CHAT_LITE+contextoDinamico(h[h.length-1].content),h)}]},
-  {id:'legada-full', note:null, legacy:h=>singlePrompt(CHAT_FULL+contextoDinamico(h[h.length-1].content),h)},
-  {id:'legada-lite', note:'Resposta com base resumida (visão anual/consolidada).', legacy:h=>singlePrompt(CHAT_LITE+contextoDinamico(h[h.length-1].content),h)},
-];
-let stratIdx=0; // adaptativo: começa da última que funcionou
+function integratedMessages(hist,context){
+  const recent=hist.slice(0,-1).slice(-6).map(m=>({
+    role:m.role==='assistant'?'assistant':'user',
+    content:String(m.content||'').slice(0,1600)
+  }));
+  return [
+    {role:'system',content:PRIMER.trim()},
+    ...recent,
+    {role:'user',content:context+'\n\nPERGUNTA ATUAL DO USUÁRIO: '+hist[hist.length-1].content+'\n\nResponda apenas a pergunta atual.'}
+  ];
+}
+function integratedSourceNote(bundle){
+  const a=bundle&&bundle.meta&&bundle.meta.latestAttendance;
+  const g=bundle&&bundle.meta&&bundle.meta.latestExpenses;
+  const stale=bundle&&bundle.source&&bundle.source.stale;
+  return `Recorte integrado: atendimentos até ${a||'NA'} · gastos até ${g||'NA'}${stale?' · Dropbox em contingência':''}.`;
+}
+const FALLBACK_WARNING='\n\n## AVISO DE CONTINGÊNCIA\nO recorte integrado não ficou disponível. A base abaixo é uma fotografia incorporada e não substitui o CSV diário. Não trate gastos de 2026 como atuais; se a pergunta depender deles, informe que o Dropbox precisa ser reconectado.\n';
 
-async function askLadder(hist){
+async function askLadder(hist,bundle){
+  const integrated=bundle&&bundle.context;
+  const fallbackData=FALLBACK_WARNING+CHAT_LITE+contextoDinamico(hist[hist.length-1].content);
+  const strategies=integrated ? [
+    {id:'integrada-api',note:integratedSourceNote(bundle),build:()=>integratedMessages(hist,integrated)},
+    {id:'integrada-legada',note:integratedSourceNote(bundle),legacy:()=>singlePrompt(integrated,hist)}
+  ] : [
+    {id:'contingencia-api',note:'Resposta em contingência; o recorte diário do Dropbox não estava disponível.',build:()=>[{role:'user',content:singlePrompt(fallbackData,hist)}]},
+    {id:'contingencia-legada',note:'Resposta em contingência; o recorte diário do Dropbox não estava disponível.',legacy:()=>singlePrompt(fallbackData,hist)}
+  ];
   const errors=[];
-  for(let i=stratIdx;i<STRATS.length;i++){
-    const s=STRATS[i];
+  for(const s of strategies){
     try{
-      const txt = s.legacy ? await callLegacy(s.legacy(hist)) : await callAPI(s.build(hist));
-      stratIdx=i;
+      const txt = s.legacy ? await callLegacy(s.legacy()) : await callAPI(s.build());
       return {txt, note:s.note};
-    }catch(e){ errors.push(s.id+': '+String(e.message||e)); }
+    }catch(e){
+      const message=String(e.message||e);
+      errors.push(s.id+': '+message);
+      if(/HTTP\s+(401|403|429)\b/.test(message)) break;
+    }
   }
   throw new Error(errors.join(' | '));
 }
 
 /* Diagnóstico: digite /debug no chat */
 async function runDiag(bubble){
-  let out='<p><strong>Diagnóstico da ponte de API</strong></p>';
-  // Teste 0: interface legada window.claude.complete
-  let legadaOk=false;
-  out+=`<p>window.claude.complete existe? ${(window.claude&&typeof window.claude.complete==='function')?'sim':'não'}</p>`;
+  let out='<p><strong>Diagnóstico da integração de dados</strong></p>';
   bubble.innerHTML=out+'<p><em>testando…</em></p>';
-  try{ const r=await callLegacy('Responda apenas: OK'); legadaOk=true; out+=`<p>✅ 0. Interface legada (window.claude.complete)</p>`; }
-  catch(e){ out+=`<p>❌ 0. Interface legada — <em>${esc(String(e.message||e).slice(0,120))}</em></p>`; }
+  let dadosOk=false, apiOk=false, algumErro='';
+  try{
+    const res=await fetch('/api/analytics/status');
+    const status=await res.json();
+    if(!res.ok) throw new Error(status.error||('HTTP '+res.status));
+    dadosOk=true;
+    out+=`<p>✅ Fontes: atendimentos até ${esc(status.latestAttendance||'NA')} · gastos até ${esc(status.latestExpenses||'NA')}</p>`;
+  }catch(e){ algumErro=String(e.message||e); out+=`<p>❌ Fontes de dados — <em>${esc(algumErro.slice(0,160))}</em></p>`; }
   bubble.innerHTML=out+'<p><em>testando…</em></p>';
-
-  const tests=[
-    {nome:'1. Ponte fetch mínima (sem dados)', msgs:[{role:'user',content:'Responda apenas: OK'}]},
-    {nome:'2. Multi-turno pequeno', msgs:[{role:'user',content:'Contexto: teste.'},{role:'assistant',content:'Entendido.'},{role:'user',content:'Responda apenas: OK'}]},
-    {nome:'3. Dados 15 KB (única msg)', msgs:[{role:'user',content:PRIMER+CHAT_LITE+'\n\nResponda apenas: OK'}]},
-    {nome:'4. Dados 15 KB (multi-turno)', msgs:[{role:'user',content:PRIMER+CHAT_LITE},{role:'assistant',content:'Entendido.'},{role:'user',content:'Responda apenas: OK'}]},
-    {nome:'5. Dados 30 KB (multi-turno)', msgs:[{role:'user',content:PRIMER+CHAT_FULL},{role:'assistant',content:'Entendido.'},{role:'user',content:'Responda apenas: OK'}]},
-  ];
-  let minimoOk=false, algumErro='';
-  for(const t of tests){
-    const kb=(JSON.stringify(t.msgs).length/1024).toFixed(0);
-    try{ await callAPI(t.msgs); out+=`<p>✅ ${t.nome} (${kb} KB)</p>`; if(t===tests[0])minimoOk=true; }
-    catch(e){ const m=esc(String(e.message||e).slice(0,160)); algumErro=m; out+=`<p>❌ ${t.nome} (${kb} KB) — <em>${m}</em></p>`; }
-    bubble.innerHTML=out+'<p><em>testando…</em></p>';
-  }
+  try{
+    const recorte=await contextoIntegrado('Compare faturamento e gastos de RP no último mês');
+    out+=`<p>✅ Recorte integrado compacto (${Math.ceil(recorte.context.length/1024)} KB)</p>`;
+    await callAPI([{role:'system',content:'Responda somente OK.'},{role:'user',content:recorte.context+'\n\nResponda somente OK.'}]);
+    apiOk=true;
+    out+='<p>✅ Ponte de IA com o novo recorte</p>';
+  }catch(e){ algumErro=String(e.message||e); out+=`<p>❌ Recorte/IA — <em>${esc(algumErro.slice(0,160))}</em></p>`; }
   // Teste storage (para o histórico)
   let storeOk=false;
   try{ if(window.storage&&window.storage.set){ await window.storage.set('icb:diag','1',false); storeOk=true; } }catch(e){}
   out+=`<p>${storeOk?'✅':'❌'} Persistência (window.storage — usada pelo histórico)</p>`;
 
   let veredito='';
-  if(legadaOk) veredito='A interface legada FUNCIONA — o chat vai usar ela automaticamente. Pode perguntar normalmente.';
-  else if(minimoOk) veredito='A ponte fetch funciona. O ponto onde falha acima indica o limite (tamanho/formato) — me mande um print.';
+  if(dadosOk&&apiOk) veredito='Integração e IA funcionando com o recorte compacto. Pode perguntar normalmente.';
+  else if(dadosOk) veredito='As bases responderam, mas a ponte de IA falhou. Verifique a configuração da OpenAI.';
   else if(/api[- ]?key|authentication|credit/i.test(algumErro)) veredito='Rodando FORA do ambiente do Claude (sem autenticação). Abra o dashboard como artifact dentro do chat do Claude.';
-  else veredito='Nenhuma das duas pontes de IA respondeu neste visualizador. As abas Executivo, Gastos e Histórico funcionam offline; o chat com IA precisa abrir esta conversa em claude.ai pelo navegador. Me mande um print deste diagnóstico.';
+  else veredito='A integração de dados não respondeu. Confira a conexão do Dropbox no Replit e tente novamente.';
   bubble.innerHTML=out+`<p><strong>Veredito:</strong> ${veredito}</p>`;
 }
 
@@ -1741,24 +1772,16 @@ async function delPair(i){
   else if(curId){ convos=convos.filter(c=>c.id!==curId); curId=null; await persist(); }
 }
 
-/* ── Carrega dados do Dropbox ao iniciar ─────────────────────────────── */
-(async function initDropboxData(){
+/* ── Consulta apenas o estado das fontes; nunca substitui as bases incorporadas ── */
+(async function initAnalyticsStatus(){
   try {
-    const res = await fetch('/api/dropbox-summary');
-    if (!res.ok) { console.warn('[Dropbox] HTTP', res.status); return; }
-    const csv = await res.text();
-    if (csv && csv.length > 10) {
-      CHAT_FULL = csv;
-      CHAT_LITE = csv;
-      const el = document.getElementById('chatLastUpdate');
-      if (el) {
-        const now = new Date();
-        el.textContent = 'atualizado ' + now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
-      }
-      console.log('[Dropbox] Dados carregados:', csv.length, 'chars');
-    }
+    const res = await fetch('/api/analytics/status');
+    const status = await res.json();
+    if (!res.ok) { console.warn('[Analytics] HTTP', res.status); return; }
+    const el = document.getElementById('chatLastUpdate');
+    if (el) el.textContent = `atendimentos até ${status.latestAttendance||'NA'} · gastos até ${status.latestExpenses||'NA'}${status.source&&status.source.stale?' · Dropbox em contingência':''}`;
   } catch(e) {
-    console.warn('[Dropbox] Falha ao carregar dados:', e.message);
+    console.warn('[Analytics] Falha ao consultar as fontes:', e.message);
   }
 })();
 
@@ -1774,7 +1797,10 @@ async function sendMsg(){
   }
   history.push({role:'user',content:q});
   try{
-    const {txt,note}=await askLadder(history);
+    let bundle=null;
+    try{ bundle=await contextoIntegrado(q); }
+    catch(e){ console.warn('[Analytics] Recorte integrado indisponível:',e.message); }
+    const {txt,note}=await askLadder(history,bundle);
     history.push({role:'assistant',content:txt});
     bubble.innerHTML=md(txt)+(note?'<div class="srcnote">'+note+'</div>':'');
     await saveCurrent();

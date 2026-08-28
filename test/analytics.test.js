@@ -1,0 +1,173 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const test = require('node:test');
+const {
+  buildQueryPlan,
+  canonicalUnit,
+  createAnalyticsEngine,
+  parseGastosCsv
+} = require('../lib/analytics');
+const { makeCurrentCsv, makeEmbeddedData } = require('./fixtures');
+
+const now = new Date('2026-08-27T12:00:00Z');
+
+function makeEngine() {
+  const embedded = makeEmbeddedData();
+  const parsed = parseGastosCsv(makeCurrentCsv(), {
+    now,
+    knownUnits: embedded.gastoDetalhado.u
+  });
+  return createAnalyticsEngine(embedded, parsed, { now });
+}
+
+test('planeja comparação integrada do segundo trimestre e reconhece RP', () => {
+  const plan = buildQueryPlan(
+    'Compare atendimento, faturamento e gastos de RP no 2º trimestre de 2026',
+    {
+      latestAttendance: '2026-05',
+      latestExpenses: '2026-04',
+      knownUnits: ['Ribeirão Preto', 'Itaim Bibi'],
+      now
+    }
+  );
+
+  assert.equal(plan.includeAttendance, true);
+  assert.equal(plan.includeExpenses, true);
+  assert.deepEqual(plan.periods, ['2026-04', '2026-05', '2026-06']);
+  assert.deepEqual(plan.units, ['Ribeirão Preto']);
+  assert.equal(plan.groupBy, 'month_unit');
+});
+
+test('normaliza aliases RP e SP para as unidades reais', () => {
+  const known = ['Ribeirão Preto', 'Itaim Bibi'];
+  assert.equal(canonicalUnit('RP', known), 'Ribeirão Preto');
+  assert.equal(canonicalUnit('SP', known), 'Itaim Bibi');
+
+  const spPlan = buildQueryPlan('faturamento e gastos de SP em abril de 2026', {
+    latestAttendance: '2026-05',
+    latestExpenses: '2026-04',
+    knownUnits: known,
+    now
+  });
+  assert.deepEqual(spPlan.units, ['Itaim Bibi']);
+});
+
+test('não soma o retrato incorporado de 2026 com o Dropbox diário', () => {
+  const result = makeEngine().query({
+    question: 'gastos e faturamento em abril de 2026',
+    periods: ['2026-04'],
+    groupBy: 'month'
+  });
+
+  assert.equal(result.rows.length, 1);
+  assert.equal(result.rows[0].gastos, 1434.56);
+  assert.equal(result.rows[0].faturamento, 15000);
+  assert.equal(result.rows[0].saldoOperacionalSimplificado, 13565.44);
+  assert.ok(result.rows[0].gastos < 900000);
+});
+
+test('usa o incorporado até 2025 e o CSV apenas desde 2026', () => {
+  const engine = makeEngine();
+  const historical = engine.query({
+    question: 'gastos de RP em dezembro de 2025',
+    periods: ['2025-12'],
+    units: ['RP'],
+    groupBy: 'month_unit',
+    includeAttendance: false,
+    includeExpenses: true
+  });
+  const current = engine.query({
+    question: 'gastos de RP em abril de 2026',
+    periods: ['2026-04'],
+    units: ['RP'],
+    groupBy: 'month_unit',
+    includeAttendance: false,
+    includeExpenses: true
+  });
+
+  assert.equal(historical.rows[0].gastos, 500);
+  assert.deepEqual(historical.rows[0].fontesGastos, ['histórico incorporado até 2025']);
+  assert.equal(current.rows[0].gastos, 1234.56);
+  assert.deepEqual(current.rows[0].fontesGastos, ['Dropbox diário desde 2026']);
+});
+
+test('mantém dado ausente como null/NA, nunca como zero', () => {
+  const result = makeEngine().query({
+    question: 'atendimentos, faturamento e gastos de RP em maio de 2026',
+    periods: ['2026-05'],
+    units: ['RP'],
+    groupBy: 'month_unit'
+  });
+
+  assert.equal(result.rows.length, 1);
+  assert.equal(result.rows[0].faturamento, 12000);
+  assert.equal(result.rows[0].consultas, 6);
+  assert.equal(result.rows[0].gastos, null);
+  assert.equal(result.rows[0].saldoOperacionalSimplificado, null);
+  assert.match(result.context, /2026-05\|Ribeirão Preto\|12\|6\|3\|2\|12000\|NA\|NA\|NA\|NA/);
+});
+
+test('endpoint lógico exclusivo de gastos não inclui métricas de atendimento', () => {
+  const result = makeEngine().query({
+    question: 'gastos de abril de 2026',
+    periods: ['2026-04'],
+    includeExpenses: true,
+    includeAttendance: false,
+    groupBy: 'month'
+  });
+
+  assert.equal(result.plan.includeAttendance, false);
+  assert.equal(result.rows[0].faturamento, null);
+  assert.equal(result.rows[0].gastos, 1434.56);
+});
+
+test('não calcula indicadores cruzados quando a cobertura mensal por unidade difere', () => {
+  const result = makeEngine().query({
+    question: 'ranking por unidade de faturamento e gastos em abril e maio de 2026',
+    periods: ['2026-04', '2026-05'],
+    groupBy: 'unit'
+  });
+  const rp = result.rows.find(row => row.unidade === 'Ribeirão Preto');
+
+  assert.deepEqual(rp.competenciasAtendimento, ['2026-04', '2026-05']);
+  assert.deepEqual(rp.competenciasGastos, ['2026-04']);
+  assert.equal(rp.coberturaComparavel, false);
+  assert.equal(rp.gastoSobreFaturamentoPct, null);
+  assert.equal(rp.saldoOperacionalSimplificado, null);
+  assert.match(result.context, /indicadores cruzados dessas linhas ficaram como NA/);
+});
+
+test('interpreta mês/ano e trimestre em múltiplos anos', () => {
+  const august = buildQueryPlan('gastos em 08/2026', {
+    latestAttendance: '2026-05', latestExpenses: '2026-08', now
+  });
+  assert.deepEqual(august.periods, ['2026-08']);
+
+  const quarters = buildQueryPlan('compare o 2º trimestre de 2025 e 2026', {
+    latestAttendance: '2026-05', latestExpenses: '2026-08', now
+  });
+  assert.deepEqual(quarters.periods, ['2025-04', '2025-05', '2025-06', '2026-04', '2026-05', '2026-06']);
+});
+
+test('entrega recortes compactos de categoria, profissional e DRE quando solicitados', () => {
+  const embedded = makeEmbeddedData();
+  const csv = [
+    'DATA;VALOR;CATEGORIA;UNIDADE;TIPO DE GASTO;FUNCIONARIO',
+    '01/04/2026;100;MARKETING;RP;ANUNCIO;ANA'
+  ].join('\n');
+  const parsed = parseGastosCsv(csv, { now, knownUnits: embedded.gastoDetalhado.u });
+  const engine = createAnalyticsEngine(embedded, parsed, { now });
+
+  const category = engine.query({ question: 'gastos por categoria marketing em abril de 2026' });
+  assert.equal(category.expenseBreakdown[0].label, 'MARKETING');
+  assert.equal(category.expenseBreakdown[0].valor, 100);
+
+  const professional = engine.query({ question: 'resultado do profissional A em RP em abril de 2026' });
+  assert.equal(professional.professionalBreakdown[0].profissional, 'Profissional A');
+
+  const dre = engine.query({ question: 'DRE e EBITDA de RP em abril de 2026' });
+  assert.equal(dre.rows[0].ebitda, 3500);
+  assert.equal(dre.rows[0].lucroLiquido, 3200);
+  assert.match(dre.context, /EBITDA_R\$/);
+});
