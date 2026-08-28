@@ -322,3 +322,31 @@ test('comparação acrescenta unidade e comandos explícitos limpam o contexto',
   assert.deepEqual(reset.plan.units, ['Itaim Bibi']);
   assert.notDeepEqual(reset.plan.periods, ['2026-04']);
 });
+
+test('entrega consultas e cirurgias por médico no total e mês a mês', () => {
+  const embedded = makeEmbeddedData();
+  const unitIndex = embedded.atendimentos.u.push('Porto Alegre') - 1;
+  embedded.atendimentos.r.push(
+    ['2601', unitIndex, 0, 10, 2, 3, 1],
+    ['2602', unitIndex, 0, 12, 4, 5, 1],
+    ['2601', unitIndex, 1, 8, 1, 2, 1],
+    ['2602', unitIndex, 1, 9, 3, 4, 1]
+  );
+  const parsed = parseGastosCsv(makeCurrentCsv(), { now, knownUnits: embedded.gastoDetalhado.u });
+  const engine = createAnalyticsEngine(embedded, parsed, { now });
+  const first = engine.query({ question: 'Panorama de Porto Alegre em 2026' });
+  const result = engine.query({
+    question: 'Número de consultas por médico e número de cirurgia por médico por ano e por mês em tabela',
+    conversationContext: first.conversationContext
+  });
+
+  assert.equal(result.plan.professionalPeriod, 'month');
+  assert.deepEqual(result.plan.units, ['Porto Alegre']);
+  assert.deepEqual(result.professionalBreakdown.map(row => row.competencia), ['2026-01', '2026-01', '2026-02', '2026-02']);
+  assert.equal(result.professionalSummary.length, 2);
+  assert.equal(result.professionalSummary[0].consultas + result.professionalSummary[1].consultas, 39);
+  assert.equal(result.professionalSummary[0].cirurgias + result.professionalSummary[1].cirurgias, 14);
+  assert.match(result.context, /## TOTAL DO PERÍODO POR PROFISSIONAL/);
+  assert.match(result.context, /## ATENDIMENTO MENSAL POR PROFISSIONAL/);
+  assert.match(result.context, /competencia\|unidade\|profissional\|consultas/);
+});

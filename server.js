@@ -114,6 +114,7 @@ function sanitizeAnalyticsInput(input) {
     }
     if ([null, 'category', 'type', 'payment', 'cost', 'employee'].includes(context.expenseDimension)) sanitized.expenseDimension = context.expenseDimension;
     if ([null, 'professional'].includes(context.attendanceDimension)) sanitized.attendanceDimension = context.attendanceDimension;
+    if ([null, 'month'].includes(context.professionalPeriod)) sanitized.professionalPeriod = context.professionalPeriod;
     if (['month', 'month_unit', 'unit'].includes(context.groupBy)) sanitized.groupBy = context.groupBy;
     for (const field of ['expenseLabels', 'professionalLabels']) {
       if (context[field] === undefined) continue;
