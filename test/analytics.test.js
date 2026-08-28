@@ -238,3 +238,28 @@ test('visão do CEO sem período usa o último mês completo comum às bases', (
   assert.equal(pastedQuestions.executiveKpis, true);
   assert.deepEqual(pastedQuestions.periods, ['2026-04']);
 });
+
+test('mapeia hospitais para PAGAMENTO HOSPITAL na pergunta exata do usuário', () => {
+  const embedded = makeEmbeddedData();
+  embedded.atendimentos.u.push('Porto Alegre');
+  embedded.gastoDetalhado.u.push('Porto Alegre');
+  embedded.gastoDetalhado.t.push('PAGAMENTO HOSPITAL');
+  const csv = [
+    'DATA;VALOR;FORMA DE PAGAMENTO;TIPO DE GASTO;CUSTO;CATEGORIA;UNIDADE;FUNCIONARIO',
+    '10/06/2026;63000;INTERNET BANKING;PAGAMENTO HOSPITAL;VARIAVEL;CIRURGIA;POA;OPERACIONAL',
+    '11/06/2026;1000;INTERNET BANKING;MATERIAL;VARIAVEL;CIRURGIA;POA;OPERACIONAL'
+  ].join('\n');
+  const parsed = parseGastosCsv(csv, { now, knownUnits: embedded.gastoDetalhado.u });
+  const result = createAnalyticsEngine(embedded, parsed, { now }).query({
+    question: 'Em Porto Alegre qual valor dos gastos com hospitais'
+  });
+
+  assert.equal(result.plan.includeExpenses, true);
+  assert.equal(result.plan.includeAttendance, false);
+  assert.equal(result.plan.expenseDimension, 'type');
+  assert.deepEqual(result.plan.expenseLabels, ['PAGAMENTO HOSPITAL']);
+  assert.equal(result.expenseBreakdown.length, 1);
+  assert.equal(result.expenseBreakdown[0].label, 'PAGAMENTO HOSPITAL');
+  assert.equal(result.expenseBreakdown[0].valor, 63000);
+  assert.match(result.context, /PAGAMENTO HOSPITAL\|63000/);
+});
