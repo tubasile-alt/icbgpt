@@ -237,6 +237,27 @@ test('reconhece a formulação como se fosse um CEO', () => {
   assert.equal(plan.periods.length, 12);
 });
 
+test('reconhece variações de linguagem executiva e a palavra CEO isolada', () => {
+  const phrases = [
+    'CEO Porto Alegre 2026',
+    'Analise os números para a diretoria',
+    'Quero uma visão executiva da unidade',
+    'Apresente um panorama executivo',
+    'Mostre com olhar executivo',
+    'Prepare um resumo executivo',
+    'Quero indicadores executivos',
+    'Analise como a diretoria'
+  ];
+
+  for (const question of phrases) {
+    const plan = buildQueryPlan(question, {
+      latestAttendance: '2026-06', latestExpenses: '2026-08', latestFinancials: '2026-06', now
+    });
+    assert.equal(plan.executiveKpis, true, question);
+    assert.equal(plan.includeFinancials, true, question);
+  }
+});
+
 test('visão do CEO sem período usa o último mês completo comum às bases', () => {
   const plan = buildQueryPlan('Visão do CEO de RP', {
     latestAttendance: '2026-05',
