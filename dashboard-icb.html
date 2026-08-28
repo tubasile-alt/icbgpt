@@ -1103,17 +1103,17 @@ function contextoDinamico(pergunta){
        + 'Estes registros vêm da base completa e são o nível mais granular disponível. Use-os preferencialmente às tabelas consolidadas acima quando a pergunta for específica.\n'
        + partes.join('\n\n');
 }
-async function contextoIntegrado(pergunta){
+async function contextoIntegrado(pergunta,contextoAnterior){
   const res=await fetch('/api/analise-integrada',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({question:pergunta})
+    body:JSON.stringify({question:pergunta,conversationContext:contextoAnterior||undefined})
   });
   let data={};
   try{ data=await res.json(); }catch(e){ throw new Error('resposta analítica ilegível'); }
   if(!res.ok) throw new Error(data.error||('HTTP '+res.status));
   if(!data.context) throw new Error('recorte analítico vazio');
-  return {context:data.context,meta:data.meta||{},source:data.source||{}};
+  return {context:data.context,meta:data.meta||{},source:data.source||{},conversationContext:data.conversationContext||null,inheritedContext:data.inheritedContext||[]};
 }
 async function callLegacy(prompt){
   if(!(window.claude&&typeof window.claude.complete==='function')) throw new Error('window.claude.complete indisponível neste visualizador');
@@ -1140,7 +1140,11 @@ function integratedSourceNote(bundle){
   const a=bundle&&bundle.meta&&bundle.meta.latestAttendance;
   const g=bundle&&bundle.meta&&bundle.meta.latestExpenses;
   const stale=bundle&&bundle.source&&bundle.source.stale;
-  return `Recorte integrado: atendimentos até ${a||'NA'} · gastos até ${g||'NA'}${stale?' · Dropbox em contingência':''}.`;
+  const c=bundle&&bundle.conversationContext;
+  const alvo=c&&c.units&&c.units.length?c.units.join(', '):'todas as unidades';
+  const periodo=c&&c.periods&&c.periods.length?(c.periods[0]+' a '+c.periods[c.periods.length-1]):'período automático';
+  const herdado=bundle&&bundle.inheritedContext&&bundle.inheritedContext.length?' · contexto mantido: '+bundle.inheritedContext.join(', '):'';
+  return `Contexto: ${alvo} · ${periodo}${herdado}. Fontes: atendimentos até ${a||'NA'} · gastos até ${g||'NA'}${stale?' · Dropbox em contingência':''}.`;
 }
 const FALLBACK_WARNING='\n\n## AVISO DE CONTINGÊNCIA\nO recorte integrado não ficou disponível. A base abaixo é uma fotografia incorporada e não substitui o CSV diário. Não trate gastos de 2026 como atuais; se a pergunta depender deles, informe que o Dropbox precisa ser reconectado.\n';
 
@@ -1202,13 +1206,13 @@ async function runDiag(bubble){
 }
 
 const msgs=document.getElementById('msgs'), input=document.getElementById('input'), send=document.getElementById('send');
-let history=[], busy=false;
+let history=[], busy=false, conversationContext=null;
 
 /* ============ HISTÓRICO DE CONVERSAS ============ */
 /* Persistência via window.storage (API de artifacts). Se indisponível, cai para memória (só a sessão). */
 const STORE_KEY='icb:conversas';
 const HAS_STORE = (()=>{try{return !!(window.storage&&typeof window.storage.get==='function'&&typeof window.storage.set==='function')}catch(e){return false}})();
-let convos=[];        // [{id,titulo,criadaEm,atualizadaEm,mensagens:[{role,content}]}]
+let convos=[];        // [{id,titulo,criadaEm,atualizadaEm,mensagens:[{role,content}],contexto}]
 let curId=null;       // conversa aberta no chat
 let storeReady=false;
 
@@ -1244,6 +1248,7 @@ async function saveCurrent(){
   const now=Date.now();
   if(!c){ c={id:curId||newId(),criadaEm:now,atualizadaEm:now,mensagens:[]}; curId=c.id; convos.unshift(c); }
   c.mensagens=history.slice();
+  c.contexto=conversationContext;
   c.titulo=tituloDe(history);
   c.atualizadaEm=now;
   // move para o topo
@@ -1251,7 +1256,7 @@ async function saveCurrent(){
   await persist();
 }
 function startNew(){
-  history=[]; curId=null;
+  history=[]; curId=null; conversationContext=null;
   msgs.innerHTML='';
   views.chat.classList.add('empty');
   show('chat');
@@ -1260,13 +1265,14 @@ function startNew(){
 function openConvo(id){
   const c=convos.find(x=>x.id===id); if(!c) return;
   history=c.mensagens.slice(); curId=c.id;
+  conversationContext=c.contexto||[...history].reverse().find(m=>m.analyticsContext)?.analyticsContext||null;
   renderConversation();
   show('chat');
 }
 async function delConvo(id,ev){
   ev.stopPropagation();
   convos=convos.filter(x=>x.id!==id);
-  if(curId===id){ history=[]; curId=null; msgs.innerHTML=''; views.chat.classList.add('empty'); }
+  if(curId===id){ history=[]; curId=null; conversationContext=null; msgs.innerHTML=''; views.chat.classList.add('empty'); }
   await persist(); renderHist();
 }
 function renderHist(){
@@ -1540,7 +1546,7 @@ function renderReportDoc(r){
   const pares=[]; let q=null;
   for(const m of r.mensagens){
     if(m.role==='user') q=m.content;
-    else if(m.role==='assistant'&&q!=null){ pares.push({q,a:m.content}); q=null; }
+    else if(m.role==='assistant'&&q!=null){ pares.push({q,a:m.content,contextNote:m.contextNote||null}); q=null; }
   }
   const dataStr=new Date(r.criadoEm).toLocaleDateString('pt-BR');
   let html=`<div class="rlogo"><img src="${LOGO_DARK}" alt="ICB"><div class="rtitle">${esc(r.titulo)}</div><div class="rsub">ICB Transplante Capilar · gerado em ${dataStr}${ai&&ai.periodo?(' · '+esc(ai.periodo)):''}</div></div>`;
@@ -1550,6 +1556,7 @@ function renderReportDoc(r){
   const fila=[];
   pares.forEach((p,i)=>{
     html+=`<div class="rquestion">${esc(stripMd(p.q))}</div>`;
+    if(p.contextNote) html+=`<div class="rfoot">${esc(p.contextNote)}</div>`;
     const {tables,text}=extractTables(p.a);
     if(text.trim()) html+=secoesToHtml(text);
     tables.forEach((tbl,ti)=>{
@@ -1737,7 +1744,10 @@ function renderConversation(){
   for(let i=0;i<history.length;i++){
     const m=history[i];
     if(m.role==='user') addMsg('user',esc(m.content));
-    else addMsg('assist',md(m.content),i);
+    else {
+      const bubble=addMsg('assist',md(m.content),i);
+      if(m.contextNote) bubble.insertAdjacentHTML('afterend','<div class="srcnote">'+esc(m.contextNote)+'</div>');
+    }
   }
   if(history.some(m=>m.role==='assistant')){
     const cta=document.createElement('div');
@@ -1767,6 +1777,7 @@ async function copyPair(i,btn){
 async function delPair(i){
   const ini=(i>0&&history[i-1].role==='user')?i-1:i;
   history.splice(ini,(i-ini)+1);
+  conversationContext=[...history].reverse().find(m=>m.role==='assistant'&&m.analyticsContext)?.analyticsContext||null;
   renderConversation();
   if(history.length) await saveCurrent();
   else if(curId){ convos=convos.filter(c=>c.id!==curId); curId=null; await persist(); }
@@ -1798,11 +1809,12 @@ async function sendMsg(){
   history.push({role:'user',content:q});
   try{
     let bundle=null;
-    try{ bundle=await contextoIntegrado(q); }
+    try{ bundle=await contextoIntegrado(q,conversationContext); }
     catch(e){ console.warn('[Analytics] Recorte integrado indisponível:',e.message); }
     const {txt,note}=await askLadder(history,bundle);
-    history.push({role:'assistant',content:txt});
-    bubble.innerHTML=md(txt)+(note?'<div class="srcnote">'+note+'</div>':'');
+    conversationContext=bundle&&bundle.conversationContext?bundle.conversationContext:conversationContext;
+    history.push({role:'assistant',content:txt,analyticsContext:conversationContext,contextNote:note||null});
+    bubble.innerHTML=md(txt)+(note?'<div class="srcnote">'+esc(note)+'</div>':'');
     await saveCurrent();
     renderConversation();
   }catch(err){

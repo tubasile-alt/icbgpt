@@ -85,6 +85,47 @@ function sanitizeAnalyticsInput(input) {
     }
     result.units = body.units.map(unit => unit.trim());
   }
+  if (body.conversationContext !== undefined) {
+    const context = body.conversationContext;
+    if (!context || typeof context !== 'object' || Array.isArray(context)) {
+      const error = new Error('Contexto da conversa inválido');
+      error.statusCode = 400;
+      throw error;
+    }
+    const sanitized = {};
+    if (context.periods !== undefined) {
+      if (!Array.isArray(context.periods) || context.periods.length > 120 || context.periods.some(period => !/^20\d{2}-(?:0[1-9]|1[0-2])$/.test(period))) {
+        const error = new Error('Períodos do contexto inválidos');
+        error.statusCode = 400;
+        throw error;
+      }
+      sanitized.periods = [...new Set(context.periods)];
+    }
+    if (context.units !== undefined) {
+      if (!Array.isArray(context.units) || context.units.length > 30 || context.units.some(unit => typeof unit !== 'string' || !unit.trim() || unit.length > 100)) {
+        const error = new Error('Unidades do contexto inválidas');
+        error.statusCode = 400;
+        throw error;
+      }
+      sanitized.units = [...new Set(context.units.map(unit => unit.trim()))];
+    }
+    for (const field of ['includeExpenses', 'includeAttendance', 'includeFinancials', 'executiveKpis']) {
+      if (typeof context[field] === 'boolean') sanitized[field] = context[field];
+    }
+    if ([null, 'category', 'type', 'payment', 'cost', 'employee'].includes(context.expenseDimension)) sanitized.expenseDimension = context.expenseDimension;
+    if ([null, 'professional'].includes(context.attendanceDimension)) sanitized.attendanceDimension = context.attendanceDimension;
+    if (['month', 'month_unit', 'unit'].includes(context.groupBy)) sanitized.groupBy = context.groupBy;
+    for (const field of ['expenseLabels', 'professionalLabels']) {
+      if (context[field] === undefined) continue;
+      if (!Array.isArray(context[field]) || context[field].length > 30 || context[field].some(label => typeof label !== 'string' || label.length > 150)) {
+        const error = new Error('Rótulos do contexto inválidos');
+        error.statusCode = 400;
+        throw error;
+      }
+      sanitized[field] = context[field];
+    }
+    result.conversationContext = sanitized;
+  }
   return result;
 }
 

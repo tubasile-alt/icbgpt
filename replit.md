@@ -26,6 +26,12 @@ Serve na porta 5000. A página principal é `/dashboard-icb.html`.
 - **DRE**: incorporada no HTML, atualmente até 2026-06.
 - **Contingência**: se o Dropbox estiver indisponível sem cache válido, usa a fotografia incorporada de 2026 com aviso explícito. Ela nunca é somada ao CSV diário.
 
+## Memória da conversa
+- Cada resposta analítica devolve um contexto estruturado com unidade, período, fontes e dimensões consultadas.
+- A pergunta seguinte envia esse contexto de volta ao servidor; filtros omitidos são herdados antes da consulta às bases.
+- Unidade ou período escritos explicitamente substituem o anterior. “Compare com” acrescenta uma unidade; “todas as unidades” remove o filtro; “nova análise” ou “novo assunto” reinicia o contexto.
+- O contexto efetivo acompanha a resposta e também é preservado no relatório da conversa para auditoria.
+
 Os gastos realizados excluem datas futuras, zeros e estornos negativos, seguindo a definição histórica de gasto bruto. Os contadores dessas exclusões e a última data realizada ficam disponíveis no contexto analítico.
 
 ## Economia de tokens

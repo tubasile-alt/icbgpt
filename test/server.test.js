@@ -93,6 +93,35 @@ test('endpoints exclusivos forçam a fonte correta', async t => {
   assert.equal(atendimentos.rows[0].gastos, null);
 });
 
+test('API aceita contexto estruturado e mantém filtros entre perguntas', async t => {
+  const base = await listen(t, createApp(makeOptions()));
+  const firstResponse = await postJson(base, '/api/analise-integrada', {
+    question: 'Panorama de RP em abril de 2026'
+  });
+  const first = await firstResponse.json();
+  const followUpResponse = await postJson(base, '/api/analise-integrada', {
+    question: 'E os gastos?',
+    conversationContext: first.conversationContext
+  });
+  const followUp = await followUpResponse.json();
+
+  assert.equal(followUpResponse.status, 200);
+  assert.deepEqual(followUp.plan.units, ['Ribeirão Preto']);
+  assert.deepEqual(followUp.plan.periods, ['2026-04']);
+  assert.deepEqual(followUp.inheritedContext, ['unidade', 'período']);
+});
+
+test('API rejeita contexto conversacional adulterado', async t => {
+  const base = await listen(t, createApp(makeOptions()));
+  const response = await postJson(base, '/api/analise-integrada', {
+    question: 'E os gastos?',
+    conversationContext: { periods: ['2026-99'], units: ['RP'] }
+  });
+
+  assert.equal(response.status, 400);
+  assert.match((await response.json()).error, /Períodos do contexto inválidos/);
+});
+
 test('CSV bruto fica oculto por padrão e pode ser habilitado explicitamente', async t => {
   const disabledBase = await listen(t, createApp(makeOptions()));
   const disabled = await fetch(`${disabledBase}/api/dropbox-data`);
