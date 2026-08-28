@@ -220,6 +220,23 @@ test('entrega visão completa do CEO com os cinco indicadores gerenciais', () =>
   assert.match(result.context, /não somar novamente os gastos do Dropbox/);
 });
 
+test('reconhece a formulação como se fosse um CEO', () => {
+  const plan = buildQueryPlan('Me dê um panorama como se fosse um CEO sobre Porto Alegre no ano de 2026', {
+    latestAttendance: '2026-06',
+    latestExpenses: '2026-08',
+    latestFinancials: '2026-06',
+    knownUnits: ['Porto Alegre'],
+    now
+  });
+
+  assert.equal(plan.executiveKpis, true);
+  assert.equal(plan.includeAttendance, true);
+  assert.equal(plan.includeExpenses, true);
+  assert.equal(plan.includeFinancials, true);
+  assert.deepEqual(plan.units, ['Porto Alegre']);
+  assert.equal(plan.periods.length, 12);
+});
+
 test('visão do CEO sem período usa o último mês completo comum às bases', () => {
   const plan = buildQueryPlan('Visão do CEO de RP', {
     latestAttendance: '2026-05',
