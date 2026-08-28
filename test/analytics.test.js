@@ -238,3 +238,87 @@ test('visão do CEO sem período usa o último mês completo comum às bases', (
   assert.equal(pastedQuestions.executiveKpis, true);
   assert.deepEqual(pastedQuestions.periods, ['2026-04']);
 });
+
+test('mapeia hospitais para PAGAMENTO HOSPITAL na pergunta exata do usuário', () => {
+  const embedded = makeEmbeddedData();
+  embedded.atendimentos.u.push('Porto Alegre');
+  embedded.gastoDetalhado.u.push('Porto Alegre');
+  embedded.gastoDetalhado.t.push('PAGAMENTO HOSPITAL');
+  const csv = [
+    'DATA;VALOR;FORMA DE PAGAMENTO;TIPO DE GASTO;CUSTO;CATEGORIA;UNIDADE;FUNCIONARIO',
+    '10/06/2026;63000;INTERNET BANKING;PAGAMENTO HOSPITAL;VARIAVEL;CIRURGIA;POA;OPERACIONAL',
+    '11/06/2026;1000;INTERNET BANKING;MATERIAL;VARIAVEL;CIRURGIA;POA;OPERACIONAL'
+  ].join('\n');
+  const parsed = parseGastosCsv(csv, { now, knownUnits: embedded.gastoDetalhado.u });
+  const result = createAnalyticsEngine(embedded, parsed, { now }).query({
+    question: 'Em Porto Alegre qual valor dos gastos com hospitais'
+  });
+
+  assert.equal(result.plan.includeExpenses, true);
+  assert.equal(result.plan.includeAttendance, false);
+  assert.equal(result.plan.expenseDimension, 'type');
+  assert.deepEqual(result.plan.expenseLabels, ['PAGAMENTO HOSPITAL']);
+  assert.equal(result.expenseBreakdown.length, 1);
+  assert.equal(result.expenseBreakdown[0].label, 'PAGAMENTO HOSPITAL');
+  assert.equal(result.expenseBreakdown[0].valor, 63000);
+  assert.match(result.context, /PAGAMENTO HOSPITAL\|63000/);
+});
+
+test('mantém unidade e período em perguntas encadeadas da mesma conversa', () => {
+  const engine = makeEngine();
+  const first = engine.query({ question: 'Panorama de RP em abril de 2026' });
+  const followUp = engine.query({
+    question: 'E os gastos com hospitais?',
+    conversationContext: first.conversationContext
+  });
+
+  assert.deepEqual(first.plan.units, ['Ribeirão Preto']);
+  assert.deepEqual(first.plan.periods, ['2026-04']);
+  assert.deepEqual(followUp.plan.units, ['Ribeirão Preto']);
+  assert.deepEqual(followUp.plan.periods, ['2026-04']);
+  assert.equal(followUp.plan.includeExpenses, true);
+  assert.equal(followUp.plan.includeAttendance, false);
+  assert.deepEqual(followUp.inheritedContext, ['unidade', 'período']);
+  assert.match(followUp.context, /Contexto efetivo: Ribeirão Preto · 2026-04 a 2026-04/);
+  assert.match(followUp.context, /Filtros herdados da conversa: unidade, período/);
+});
+
+test('pergunta anual troca o período, mas preserva a unidade da conversa', () => {
+  const engine = makeEngine();
+  const first = engine.query({ question: 'Visão do CEO de RP em abril de 2026' });
+  const followUp = engine.query({
+    question: 'Tabela de gastos, faturamento e cirurgias por mês no ano 2026',
+    conversationContext: first.conversationContext
+  });
+
+  assert.deepEqual(followUp.plan.units, ['Ribeirão Preto']);
+  assert.equal(followUp.plan.periods.length, 12);
+  assert.equal(followUp.plan.periods[0], '2026-01');
+  assert.equal(followUp.plan.periods.at(-1), '2026-12');
+  assert.deepEqual(followUp.inheritedContext, ['unidade']);
+  assert.ok(followUp.rows.every(row => row.unidade === 'Ribeirão Preto'));
+});
+
+test('comparação acrescenta unidade e comandos explícitos limpam o contexto', () => {
+  const engine = makeEngine();
+  const first = engine.query({ question: 'Gastos de RP em abril de 2026' });
+  const comparison = engine.query({
+    question: 'Compare com SP',
+    conversationContext: first.conversationContext
+  });
+  const allUnits = engine.query({
+    question: 'Agora mostre todas as unidades',
+    conversationContext: comparison.conversationContext
+  });
+  const reset = engine.query({
+    question: 'Nova análise: gastos de SP',
+    conversationContext: first.conversationContext
+  });
+
+  assert.deepEqual(comparison.plan.units, ['Ribeirão Preto', 'Itaim Bibi']);
+  assert.deepEqual(comparison.plan.periods, ['2026-04']);
+  assert.deepEqual(allUnits.plan.units, []);
+  assert.deepEqual(allUnits.plan.periods, ['2026-04']);
+  assert.deepEqual(reset.plan.units, ['Itaim Bibi']);
+  assert.notDeepEqual(reset.plan.periods, ['2026-04']);
+});
