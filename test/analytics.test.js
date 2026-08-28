@@ -171,3 +171,24 @@ test('entrega recortes compactos de categoria, profissional e DRE quando solicit
   assert.equal(dre.rows[0].lucroLiquido, 3200);
   assert.match(dre.context, /EBITDA_R\$/);
 });
+
+test('tolera erros de digitação em médico, cirurgia e Porto Alegre', () => {
+  const embedded = makeEmbeddedData();
+  embedded.atendimentos.u.push('Porto Alegre');
+  embedded.atendimentos.p.push('Médico Porto Alegre');
+  embedded.atendimentos.r.push(
+    ['2605', 2, -1, 20, 20000, 0, 0],
+    ['2605', 2, 1, 10, 2, 4, 1]
+  );
+  const parsed = parseGastosCsv(makeCurrentCsv(), { now, knownUnits: embedded.gastoDetalhado.u });
+  const result = createAnalyticsEngine(embedded, parsed, { now }).query({
+    question: 'Calcule a conversão de cada Medco d eportpmalegre baseado número de consulta e número de corugia'
+  });
+
+  assert.deepEqual(result.plan.units, ['Porto Alegre']);
+  assert.equal(result.plan.attendanceDimension, 'professional');
+  assert.equal(result.professionalBreakdown.length, 1);
+  assert.equal(result.professionalBreakdown[0].profissional, 'Médico Porto Alegre');
+  assert.equal(result.professionalBreakdown[0].conversaoConsultaCirurgiaPct, 40);
+  assert.match(result.context, /conversao_consulta_cirurgia_pct/);
+});
